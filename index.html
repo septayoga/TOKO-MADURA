@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toko Serba Ada - Checkout WhatsApp</title>
+    <!-- Framework Tailwind CSS untuk tampilan modern -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen flex flex-col justify-between">
+
+    <!-- Header / Navbar -->
+    <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Toko Serba Unik</h1>
+            <button onclick="toggleCartModal()" class="relative bg-indigo-700 hover:bg-indigo-800 px-4 py-2 rounded-lg flex items-center gap-2 transition">
+                <span>🛒 Keranjang</span>
+                <span id="cart-count" class="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content / Daftar Produk -->
+    <main class="max-w-6xl mx-auto px-4 py-8 flex-grow">
+        <h2 class="text-xl font-bold text-gray-800 mb-6">Produk Pilihan Kami</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="product-list">
+            <!-- Produk akan di-render melalui JavaScript -->
+        </div>
+    </main>
+
+    <!-- Modal Keranjang Belanja & Form Checkout -->
+    <div id="cart-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center p-4 z-50">
+        <div class="bg-white rounded-lg max-w-lg w-full p-6 shadow-xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="toggleCartModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 font-bold text-xl">&times;</button>
+            <h3 class="text-xl font-bold mb-4 border-b pb-2">Keranjang Belanja</h3>
+
+            <!-- Daftar Item Keranjang -->
+            <div id="cart-items" class="space-y-3 mb-4">
+                <p class="text-gray-500 text-center py-4">Keranjang Anda masih kosong.</p>
+            </div>
+
+            <!-- Total Harga -->
+            <div class="flex justify-between font-bold text-lg border-t pt-2 mb-4">
+                <span>Total:</span>
+                <span id="cart-total" class="text-indigo-600">Rp 0</span>
+            </div>
+
+            <!-- Form Data Pembeli -->
+            <form id="checkout-form" onsubmit="handleCheckout(event)" class="space-y-3 border-t pt-4">
+                <h4 class="font-semibold text-gray-700">Data Pemesan:</h4>
+                <div>
+                    <label class="block text-sm text-gray-600">Nama Lengkap</label>
+                    <input type="text" id="buyer-name" required placeholder="Masukkan nama Anda" class="w-full border rounded p-2 text-sm focus:outline-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600">Alamat Lengkap</label>
+                    <textarea id="buyer-address" required placeholder="Jalan, No. Rumah, RT/RW, Kecamatan, Kota" class="w-full border rounded p-2 text-sm focus:outline-indigo-500" rows="2"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-600">Catatan (Opsional)</label>
+                    <input type="text" id="buyer-note" placeholder="Contoh: Esnya sedikit saja / Tolong dipacking aman" class="w-full border rounded p-2 text-sm focus:outline-indigo-500">
+                </div>
+
+                <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-lg flex justify-center items-center gap-2 mt-4 transition">
+                    💬 Checkout via WhatsApp
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white text-center py-4 text-sm mt-8">
+        &copy; 2026 Toko Serba Unik. All rights reserved.
+    </footer>
+
+    <!-- Script JavaScript -->
+    <script>
+        // ==========================================
+        // CONFIG: Masukkan nomor WA Anda di sini!
+        // Format: 628xxxxxxxxxx (Tanpa tanda +, spasi, atau angka 0 di depan)
+        // ==========================================
+        const WA_NUMBER = "6281234567890"; 
+
+        // Data 3 Produk Sesuai Permintaan
+        const products = [
+            {
+                id: 1,
+                name: "Jus Mangga Segar",
+                price: 15000,
+                image: "https://images.unsplash.com/photo-1546173159-315724a31696?w=500&q=80",
+                description: "Jus mangga manis alami dibuat dari buah mangga harum manis pilihan segar."
+            },
+            {
+                id: 2,
+                name: "Hewan Capung Peliharaan",
+                price: 5000,
+                image: "https://images.unsplash.com/photo-1558257004-3620e2908f5d?w=500&q=80",
+                description: "Capung ramah lingkungan, cocok untuk edukasi atau pembasmi nyamuk alami."
+            },
+            {
+                id: 3,
+                name: "Laptop Termahal (Luvaglio)",
+                price: 1500000000, // Rp 1.5 Miliar
+                image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&q=80",
+                description: "Laptop super mewah bertabur berlian murni, spesifikasi tertawa di atas awan."
+            }
+        ];
+
+        let cart = [];
+
+        // Format Angka ke Rupiah
+        function formatRupiah(number) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(number);
+        }
+
+        // Tampilkan Produk ke Halaman Web
+        function renderProducts() {
+            const container = document.getElementById('product-list');
+            container.innerHTML = products.map(product => `
+                <div class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col justify-between hover:shadow-lg transition">
+                    <div>
+                        <img src="${product.image}" alt="${product.name}" class="w-full h-48 object-cover">
+                        <div class="p-4">
+                            <h3 class="font-bold text-lg text-gray-800">${product.name}</h3>
+                            <p class="text-indigo-600 font-semibold mt-1">${formatRupiah(product.price)}</p>
+                            <p class="text-gray-600 text-sm mt-2">${product.description}</p>
+                        </div>
+                    </div>
+                    <div class="p-4 pt-0">
+                        <button onclick="addToCart(${product.id})" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded font-medium transition">
+                            + Tambah ke Keranjang
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Tambahkan ke Keranjang
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            const cartItem = cart.find(item => item.id === productId);
+
+            if (cartItem) {
+                cartItem.qty += 1;
+            } else {
+                cart.push({ ...product, qty: 1 });
+            }
+
+            updateCartUI();
+        }
+
+        // Ubah Jumlah Item di Keranjang
+        function changeQty(productId, amount) {
+            const cartItem = cart.find(item => item.id === productId);
+            if (cartItem) {
+                cartItem.qty += amount;
+                if (cartItem.qty <= 0) {
+                    cart = cart.filter(item => item.id !== productId);
+                }
+            }
+            updateCartUI();
+        }
+
+        // Update Tampilan Keranjang
+        function updateCartUI() {
+            // Count
+            const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
+            document.getElementById('cart-count').innerText = totalItems;
+
+            // List Items
+            const cartItemsContainer = document.getElementById('cart-items');
+            if (cart.length === 0) {
+                cartItemsContainer.innerHTML = '<p class="text-gray-500 text-center py-4">Keranjang Anda masih kosong.</p>';
+            } else {
+                cartItemsContainer.innerHTML = cart.map(item => `
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <div>
+                            <h4 class="font-semibold text-sm">${item.name}</h4>
+                            <p class="text-xs text-gray-500">${formatRupiah(item.price)} x ${item.qty}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="changeQty(${item.id}, -1)" class="bg-gray-200 px-2 rounded font-bold hover:bg-gray-300">-</button>
+                            <span class="text-sm font-semibold">${item.qty}</span>
+                            <button onclick="changeQty(${item.id}, 1)" class="bg-gray-200 px-2 rounded font-bold hover:bg-gray-300">+</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Total Price
+            const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            document.getElementById('cart-total').innerText = formatRupiah(totalPrice);
+        }
+
+        // Toggle Modal Keranjang
+        function toggleCartModal() {
+            const modal = document.getElementById('cart-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        // Proses Checkout ke WhatsApp
+        function handleCheckout(event) {
+            event.preventDefault();
+
+            if (cart.length === 0) {
+                alert("Keranjang belanja Anda masih kosong!");
+                return;
+            }
+
+            const name = document.getElementById('buyer-name').value;
+            const address = document.getElementById('buyer-address').value;
+            const note = document.getElementById('buyer-note').value;
+            
+            const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+            // Menyusun Pesan WhatsApp
+            let message = `Halo Kak, saya ingin memesan barang berikut:\n\n`;
+            message += `*DETAIL PESANAN:*\n`;
+            
+            cart.forEach((item, index) => {
+                message += `${index + 1}. ${item.name} (${item.qty}x) = ${formatRupiah(item.price * item.qty)}\n`;
+            });
+
+            message += `\n*TOTAL BAYAR:* ${formatRupiah(totalPrice)}\n\n`;
+            message += `*DATA PEMESAN:*\n`;
+            message += `👤 Nama: ${name}\n`;
+            message += `📍 Alamat: ${address}\n`;
+            if (note) {
+                message += `📝 Catatan: ${note}\n`;
+            }
+            message += `\nMohon diproses ya kak, terima kasih!`;
+
+            // Enkripsi teks agar aman dipakai di URL WhatsApp
+            const encodedMessage = encodeURIComponent(message);
+            const waUrl = `https://wa.me/${WA_NUMBER}?text=${encodedMessage}`;
+
+            // Redirect ke aplikasi WhatsApp
+            window.open(waUrl, '_blank');
+        }
+
+        // Jalankan fungsi saat halaman dimuat
+        renderProducts();
+    </script>
+</body>
+</html>
